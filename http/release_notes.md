@@ -1,3 +1,20 @@
+#### 2.1.0
+
+##### What's Added
+
+- **Typed configuration & operation params (pydantic v2).** The connector's configuration and every operation's `params` are now validated and normalized through pydantic models. Legacy shapes (JSON strings, `[{key, value}]` lists, string-y ints, the `'text'` body alias) are coerced into clean typed fields automatically ��� no behavior change for existing playbooks, but invalid configs now fail fast with a clear validation message instead of a downstream `KeyError`.
+- **`pydantic>=2.7` is now a runtime dependency** (see `requirements.txt`). The FortiSOAR 8.0 appliance runtime already ships pydantic v2; on 7.6.x it installs automatically when the connector is deployed.
+
+##### What's Fixed
+
+- Type annotations now use `Optional[X]`/`Union[X, Y]` (not PEP 604 `X | None`) in pydantic model fields, so the connector imports cleanly on the Python 3.9 appliance runtime (7.6.x). `from __future__ import annotations` does not defer pydantic field-resolution, so the union form is required.
+
+##### Breaking changes
+
+- None for existing configurations or playbooks. The 2.0.x connection-level fields and action parameters are unchanged; the pydantic layer is additive validation only.
+
+---
+
 #### The HTTP connector has been substantially expanded in version 2.0.0:
 
 ##### What's Added

@@ -5,7 +5,7 @@
   "publisher": "Fortinet",
   "cs_approved": true,
   "cs_compatible": true,
-  "version": "2.0.4",
+  "version": "2.1.0",
   "category": "HTTP Requests",
   "help_online": "",
   "icon_small_name": "HTTP_Connector_small.png",
