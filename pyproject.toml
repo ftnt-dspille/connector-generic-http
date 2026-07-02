@@ -18,7 +18,12 @@ target-version = "py39"
 select = ["F", "E", "W", "I", "UP", "B"]
 
 [tool.mypy]
+# Target the appliance floor (7.6.x = Python 3.9) so local mypy on a newer
+# interpreter can't silently accept 3.10+ syntax that would fail on-box.
+python_version = "3.9"
 # The connector runs inside the FortiSOAR appliance runtime, whose packages
 # (connectors.core, integrations.crudhub, connectors.cyops_utilities, django)
-# are not pip-installable off-box. Treat them as untyped externals.
+# are not pip-installable off-box. Treat them as untyped externals. Note this
+# suppresses import-not-found, NOT import-untyped — third-party libs without
+# bundled types need stub packages (e.g. types-requests) in requirements-dev.
 ignore_missing_imports = true
