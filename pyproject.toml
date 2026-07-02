@@ -16,6 +16,13 @@ target-version = "py39"
 [tool.ruff.lint]
 # pyflakes, pycodestyle, isort, pyupgrade, bugbear
 select = ["F", "E", "W", "I", "UP", "B"]
+# Keep Optional[X]/Union[X, Y] in pydantic model fields. PEP 604 (`X | None`)
+# is runtime-safe on 3.10+, but pydantic resolves field annotations at class
+# creation time by evaluating the annotation expression — and the `X | None`
+# expression is not evaluable on the 3.9 appliance runtime.
+# ruff's UP045/UP007 assume `from __future__ import annotations` makes `X | None`
+# safe (true for plain functions, false for pydantic models), so opt out here.
+ignore = ["UP045", "UP007"]
 
 [tool.mypy]
 # Target the appliance floor (7.6.x = Python 3.9) so local mypy on a newer

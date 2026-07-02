@@ -18,7 +18,7 @@ from __future__ import annotations
 import json as _json
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Literal, Union
+from typing import Any, Literal, Optional, Union
 
 from connectors.core.connector import ConnectorError
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -88,7 +88,7 @@ def _strip(v: Any) -> str:
     return str(v).strip() if v is not None else ""
 
 
-def _strip_or_none(v: Any) -> str | None:
+def _strip_or_none(v: Any) -> Optional[str]:
     v = _strip(v)
     return v or None
 
@@ -102,7 +102,7 @@ def _coerce_int(default: int) -> Callable[[Any], int]:
     return _coerce
 
 
-def _coerce_int_or_none(v: Any) -> int | None:
+def _coerce_int_or_none(v: Any) -> Optional[int]:
     if v in (None, "", 0):
         return None
     return int(v)
@@ -151,9 +151,9 @@ class CommonRequestParams(BaseModel):
     rest_api: str = ""
     parameter: dict[str, Any] = Field(default_factory=dict)
     header: dict[str, str] = Field(default_factory=dict)
-    timeout: int | None = None
+    timeout: Optional[int] = None
     follow_redirects: bool = True
-    response_path: str | None = None
+    response_path: Optional[str] = None
     raw_response: bool = False
 
     @field_validator("rest_api", mode="before")
@@ -173,7 +173,7 @@ class CommonRequestParams(BaseModel):
 
     @field_validator("timeout", mode="before")
     @classmethod
-    def _v_timeout(cls, v: Any) -> int | None:
+    def _v_timeout(cls, v: Any) -> Optional[int]:
         return _coerce_int_or_none(v)
 
     @field_validator("follow_redirects", mode="before")
@@ -188,7 +188,7 @@ class CommonRequestParams(BaseModel):
 
     @field_validator("response_path", mode="before")
     @classmethod
-    def _v_response_path(cls, v: Any) -> str | None:
+    def _v_response_path(cls, v: Any) -> Optional[str]:
         return _strip_or_none(v)
 
 
@@ -264,9 +264,9 @@ class UploadFileParams(BaseModel):
     extra_fields: dict[str, Any] = Field(default_factory=dict)
     header: dict[str, str] = Field(default_factory=dict)
     parameter: dict[str, Any] = Field(default_factory=dict)
-    timeout: int | None = None
+    timeout: Optional[int] = None
     follow_redirects: bool = True
-    response_path: str | None = None
+    response_path: Optional[str] = None
     raw_response: bool = False
 
     @field_validator("rest_api", "filename", mode="before")
@@ -311,7 +311,7 @@ class UploadFileParams(BaseModel):
 
     @field_validator("timeout", mode="before")
     @classmethod
-    def _v_timeout(cls, v: Any) -> int | None:
+    def _v_timeout(cls, v: Any) -> Optional[int]:
         return _coerce_int_or_none(v)
 
     @field_validator("follow_redirects", mode="before")
@@ -326,7 +326,7 @@ class UploadFileParams(BaseModel):
 
     @field_validator("response_path", mode="before")
     @classmethod
-    def _v_response_path(cls, v: Any) -> str | None:
+    def _v_response_path(cls, v: Any) -> Optional[str]:
         return _strip_or_none(v)
 
 
@@ -343,7 +343,7 @@ class DownloadFileParams(BaseModel):
     parameter: dict[str, Any] = Field(default_factory=dict)
     body_type: BodyType = "none"
     data: Any = None  # arbitrary JSON body
-    timeout: int | None = None
+    timeout: Optional[int] = None
     follow_redirects: bool = True
 
     @field_validator("rest_api", "filename", "attachment_name", "description", mode="before")
@@ -378,7 +378,7 @@ class DownloadFileParams(BaseModel):
 
     @field_validator("timeout", mode="before")
     @classmethod
-    def _v_timeout(cls, v: Any) -> int | None:
+    def _v_timeout(cls, v: Any) -> Optional[int]:
         return _coerce_int_or_none(v)
 
     @field_validator("follow_redirects", mode="before")
@@ -392,8 +392,8 @@ class PaginateParams(BaseModel):
 
     rest_api: str = ""
     pagination_mode: PaginationMode = "link_header"
-    items_path: str | None = None
-    next_url_path: str | None = None
+    items_path: Optional[str] = None
+    next_url_path: Optional[str] = None
     page_param_name: str = "page"
     start_page: int = 1
     max_pages: int = 50
@@ -402,9 +402,9 @@ class PaginateParams(BaseModel):
     data: Any = None  # arbitrary JSON body
     header: dict[str, str] = Field(default_factory=dict)
     parameter: dict[str, Any] = Field(default_factory=dict)
-    timeout: int | None = None
+    timeout: Optional[int] = None
     follow_redirects: bool = True
-    response_path: str | None = None
+    response_path: Optional[str] = None
 
     @field_validator("rest_api", mode="before")
     @classmethod
@@ -418,7 +418,7 @@ class PaginateParams(BaseModel):
 
     @field_validator("items_path", "next_url_path", "response_path", mode="before")
     @classmethod
-    def _v_strip_or_none(cls, v: Any) -> str | None:
+    def _v_strip_or_none(cls, v: Any) -> Optional[str]:
         return _strip_or_none(v)
 
     @field_validator("page_param_name", mode="before")
@@ -458,7 +458,7 @@ class PaginateParams(BaseModel):
 
     @field_validator("timeout", mode="before")
     @classmethod
-    def _v_timeout(cls, v: Any) -> int | None:
+    def _v_timeout(cls, v: Any) -> Optional[int]:
         return _coerce_int_or_none(v)
 
     @field_validator("follow_redirects", mode="before")
@@ -470,26 +470,26 @@ class PaginateParams(BaseModel):
 class FetchRecordsParams(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra="ignore")
 
-    fetch_url: str | None = None
+    fetch_url: Optional[str] = None
     method: Method = "GET"
     pagination_mode: IngestPaginationMode = "none"
-    response_path: str | None = None
+    response_path: Optional[str] = None
     body_type: BodyType = "none"
     data: Any = None  # arbitrary JSON body
     header: dict[str, str] = Field(default_factory=dict)
     parameter: dict[str, Any] = Field(default_factory=dict)
-    timeout: int | None = None
+    timeout: Optional[int] = None
     follow_redirects: bool = True
     # Pagination sub-params (used when pagination_mode != 'none' -> delegates to http_paginate).
     page_param_name: str = "page"
     start_page: int = 1
     max_pages: int = 50
-    next_url_path: str | None = None
-    items_path: str | None = None
+    next_url_path: Optional[str] = None
+    items_path: Optional[str] = None
 
     @field_validator("fetch_url", "response_path", "next_url_path", "items_path", mode="before")
     @classmethod
-    def _v_strip_or_none(cls, v: Any) -> str | None:
+    def _v_strip_or_none(cls, v: Any) -> Optional[str]:
         return _strip_or_none(v)
 
     @field_validator("method", mode="before")
@@ -519,7 +519,7 @@ class FetchRecordsParams(BaseModel):
 
     @field_validator("timeout", mode="before")
     @classmethod
-    def _v_timeout(cls, v: Any) -> int | None:
+    def _v_timeout(cls, v: Any) -> Optional[int]:
         return _coerce_int_or_none(v)
 
     @field_validator("follow_redirects", mode="before")
@@ -563,7 +563,7 @@ class ParsedResponse(BaseModel):
     # Any JSON value: dict, list, str, int, float, bool, or None (a response_path
     # pluck can yield a scalar; raw bytes are wrapped in a dict envelope).
     body: Any = None  # arbitrary JSON value (dict/list/str/scalar/None)
-    content_base64: str | None = None
+    content_base64: Optional[str] = None
 
     def as_output(self) -> dict[str, Any]:
         return self.model_dump(exclude_none=True)

@@ -18,7 +18,7 @@ preserved by keeping the required-field checks at the call site
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from typing import Any, Final, Literal, TypeVar, Union
+from typing import Any, Final, Literal, Optional, TypeVar, Union
 
 from connectors.core.connector import ConnectorError
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
@@ -107,11 +107,11 @@ class HttpConfig(BaseModel):
 
     # Connection / base URL
     server_url: str = ""
-    port: int | str | None = None
+    port: Optional[Union[int, str]] = None
     verify_ssl: bool = True
     # None when unset so each call site applies its own default (60 for requests,
     # 30 for check_health, 300 for upload/download) — matches legacy behavior.
-    timeout: int | None = None
+    timeout: Optional[int] = None
     default_headers: dict[str, str] = Field(default_factory=dict)
     return_on_error: bool = True
 
@@ -121,8 +121,8 @@ class HttpConfig(BaseModel):
     retry_on_status: tuple[int, ...] = (429, 500, 502, 503, 504)
 
     # Ingestion defaults
-    default_fetch_url: str | None = None
-    default_response_path: str | None = None
+    default_fetch_url: Optional[str] = None
+    default_response_path: Optional[str] = None
 
     # Auth discriminator + flat auth fields (one variant's keys per auth_type)
     auth_type: AuthType = AUTH_NONE
@@ -143,13 +143,13 @@ class HttpConfig(BaseModel):
     login_password: str = ""
     login_username_field: str = ""
     login_password_field: str = ""
-    login_token_path: str | None = None
+    login_token_path: Optional[str] = None
     login_header_name: str = ""
     login_header_prefix: str = ""
 
     @field_validator("timeout", mode="before")
     @classmethod
-    def _v_timeout(cls, v: Any) -> int | None:
+    def _v_timeout(cls, v: Any) -> Optional[int]:
         if v in (None, "", 0):
             return None
         return int(v)
@@ -217,7 +217,7 @@ class HttpConfig(BaseModel):
 
     @field_validator("login_token_path", "default_fetch_url", "default_response_path", mode="before")
     @classmethod
-    def _v_strip_or_none(cls, v: Any) -> str | None:
+    def _v_strip_or_none(cls, v: Any) -> Optional[str]:
         v = _strip(v)
         return v or None
 
@@ -272,7 +272,7 @@ class TokenLoginAuth(BaseModel):
     login_password: str = ""
     login_username_field: str = ""
     login_password_field: str = ""
-    login_token_path: str | None = None
+    login_token_path: Optional[str] = None
     login_header_name: str = ""
     login_header_prefix: str = ""
 
@@ -330,7 +330,7 @@ def auth_from_config(cfg: HttpConfig) -> AuthConfig:
 # --------------------------------------------------------------------------- #
 
 
-def _parse_config(config: HttpConfig | Mapping[str, Any] | None) -> HttpConfig:
+def _parse_config(config: Optional[Union[HttpConfig, Mapping[str, Any]]]) -> HttpConfig:
     """Parse the raw FortiSOAR config dict into HttpConfig.
 
     Accepts a dict (the normal case) or an already-parsed HttpConfig (so
@@ -348,7 +348,7 @@ def _parse_config(config: HttpConfig | Mapping[str, Any] | None) -> HttpConfig:
 _TModel = TypeVar("_TModel", bound=BaseModel)
 
 
-def _validate(model_cls: type[_TModel], data: Mapping[str, Any] | None, ctx: str = "") -> _TModel:
+def _validate(model_cls: type[_TModel], data: Optional[Mapping[str, Any]], ctx: str = "") -> _TModel:
     """Validate a params dict into the given model, surfacing ValidationError as ConnectorError."""
     try:
         return model_cls.model_validate(data or {})
