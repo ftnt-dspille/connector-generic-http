@@ -1,0 +1,24 @@
+# Test/lint configuration for the HTTP connector.
+#
+# This file is config-only — the connector ships as an RPM to the FortiSOAR
+# appliance runtime, not as a wheel — so there is intentionally no
+# [build-system] or [project] table. Runtime deps live in http/requirements.txt.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 110
+# The connector ships to the FortiSOAR appliance runtime, which is Python 3.9
+# on 7.6.x — so target the lowest runtime, not the dev machine's interpreter.
+target-version = "py39"
+
+[tool.ruff.lint]
+# pyflakes, pycodestyle, isort, pyupgrade, bugbear
+select = ["F", "E", "W", "I", "UP", "B"]
+
+[tool.mypy]
+# The connector runs inside the FortiSOAR appliance runtime, whose packages
+# (connectors.core, integrations.crudhub, connectors.cyops_utilities, django)
+# are not pip-installable off-box. Treat them as untyped externals.
+ignore_missing_imports = true

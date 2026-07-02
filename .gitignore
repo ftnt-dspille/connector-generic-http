@@ -1,0 +1,12 @@
+# Live SOAR test credentials (BASE_URL + API_KEY) — never commit.
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+*.egg-info/
+
+.DS_Store
