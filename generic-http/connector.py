@@ -4,7 +4,7 @@ from connectors.core.connector import Connector, ConnectorError, get_logger
 
 from .operations import check_health, http_ops
 
-logger = get_logger("http")
+logger = get_logger("generic-http")
 
 
 class HTTP(Connector):  # type: ignore[misc]

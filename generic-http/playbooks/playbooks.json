@@ -55,7 +55,7 @@
                   "json_format": true
                 },
                 "version": "1.0.0",
-                "connector": "http",
+                "connector": "generic-http",
                 "operation": "http_delete",
                 "operationTitle": "HTTP DELETE request",
                 "step_variables": []
@@ -127,7 +127,7 @@
                   "json_format": true
                 },
                 "version": "1.0.0",
-                "connector": "http",
+                "connector": "generic-http",
                 "operation": "http_head",
                 "operationTitle": "HTTP HEAD request",
                 "step_variables": []
@@ -199,7 +199,7 @@
                   "json_format": true
                 },
                 "version": "1.0.0",
-                "connector": "http",
+                "connector": "generic-http",
                 "operation": "http_options",
                 "operationTitle": "HTTP OPTIONS Request",
                 "step_variables": {
@@ -273,7 +273,7 @@
                   "json_format": true
                 },
                 "version": "1.0.0",
-                "connector": "http",
+                "connector": "generic-http",
                 "operation": "http_patch",
                 "operationTitle": "HTTP PATCH request",
                 "step_variables": []
@@ -326,7 +326,7 @@
                   "json_format": true
                 },
                 "version": "1.0.0",
-                "connector": "http",
+                "connector": "generic-http",
                 "operation": "http_put",
                 "operationTitle": "HTTP PUT Request",
                 "step_variables": []
@@ -416,7 +416,7 @@
                   "json_format": false
                 },
                 "version": "1.0.0",
-                "connector": "http",
+                "connector": "generic-http",
                 "operation": "http_get",
                 "operationTitle": "HTTP GET Request",
                 "step_variables": {
@@ -471,7 +471,7 @@
                   "json_format": true
                 },
                 "version": "1.0.0",
-                "connector": "http",
+                "connector": "generic-http",
                 "operation": "http_post",
                 "operationTitle": "HTTP POST Request",
                 "step_variables": {

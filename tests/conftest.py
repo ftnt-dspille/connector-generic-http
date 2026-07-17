@@ -7,7 +7,7 @@ into ``sys.modules`` *before* any test imports the connector, so ``operations.py
 be imported and unit-tested in isolation.
 
 It also exposes a ``load_connector`` fixture that imports the connector's ``operations``
-module from the sibling ``http/`` package under an isolated alias.
+module from the sibling ``generic-http/`` package under an isolated alias.
 """
 
 from __future__ import annotations
@@ -117,7 +117,7 @@ _install_framework_stubs()
 # Connector module loader fixture
 # ---------------------------------------------------------------------------
 
-# tests/ sits next to the http/ package at the repo root.
+# tests/ sits next to the generic-http/ package at the repo root.
 CONNECTOR_DIR = Path(__file__).resolve().parent.parent
 
 
@@ -161,5 +161,5 @@ def _load_connector_operations(connector_name: str):
 
 @pytest.fixture
 def load_connector():
-    """Returns a callable: ``ops = load_connector('http')``."""
+    """Returns a callable: ``ops = load_connector('generic-http')``."""
     return _load_connector_operations

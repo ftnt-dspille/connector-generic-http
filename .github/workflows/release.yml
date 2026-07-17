@@ -22,11 +22,11 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          tar -czf "connector-http-${VERSION}.tgz" http/
+          tar -czf "connector-generic-http-${VERSION}.tgz" generic-http/
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: "HTTP Connector v${{ steps.version.outputs.version }}"
-          body_path: http/release_notes.md
-          files: "connector-http-${{ steps.version.outputs.version }}.tgz"
+          body_path: generic-http/release_notes.md
+          files: "connector-generic-http-${{ steps.version.outputs.version }}.tgz"

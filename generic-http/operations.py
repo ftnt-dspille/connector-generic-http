@@ -62,7 +62,7 @@ from .models import (
     _to_list_of_pairs,
 )
 
-logger = get_logger("http")
+logger = get_logger("generic-http")
 
 SSL_VALIDATION_ERROR = "SSL certificate validation failed"
 CONNECTION_TIMEOUT = "The request timed out while trying to connect to the remote server"

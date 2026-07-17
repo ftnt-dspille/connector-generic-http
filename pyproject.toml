@@ -2,7 +2,7 @@
 #
 # This file is config-only — the connector ships as an RPM to the FortiSOAR
 # appliance runtime, not as a wheel — so there is intentionally no
-# [build-system] or [project] table. Runtime deps live in http/requirements.txt.
+# [build-system] or [project] table. Runtime deps live in generic-http/requirements.txt.
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

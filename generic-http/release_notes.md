@@ -1,3 +1,19 @@
+#### 3.0.0
+
+##### Breaking changes
+
+- **The connector's `name` has changed from `http` to `generic-http`.** The old name collided with the FortiSOAR namespace. FortiSOAR keys a connector by its `name`, so this installs as a *new* connector rather than upgrading the existing one:
+  - The existing `http` connector configuration does **not** carry over — re-create the configuration under `generic-http` after installing.
+  - Any playbook step bound to the old `http` connector must be re-pointed at `generic-http`. Such steps fail rather than silently following the rename.
+  - Uninstall the old `http` connector once every playbook has been migrated.
+- The connector package directory is now `generic-http/` (was `http/`), and the release tarball is `connector-generic-http-<version>.tgz`. This also resolves the old directory shadowing Python's stdlib `http` module.
+
+##### What's Changed
+
+- No operation, parameter, or connection-field changes. Every action behaves exactly as in 2.1.0 — this release is a rename only.
+
+---
+
 #### 2.1.0
 
 ##### What's Added

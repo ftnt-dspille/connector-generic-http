@@ -56,7 +56,7 @@ pytestmark = pytest.mark.skipif(
 
 @pytest.fixture
 def ops(load_connector):
-    mod = load_connector('http')
+    mod = load_connector('generic-http')
     mod._OAUTH_TOKEN_CACHE.clear()
     return mod
 

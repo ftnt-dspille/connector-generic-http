@@ -23,7 +23,7 @@ LIVE = bool(os.environ.get('RUN_LIVE_TESTS'))
 @pytest.fixture
 def ops(load_connector):
     # Reset the OAuth token cache between tests.
-    mod = load_connector('http')
+    mod = load_connector('generic-http')
     mod._OAUTH_TOKEN_CACHE.clear()
     return mod
 
