@@ -3,7 +3,7 @@
   "data": [
     {
       "@type": "WorkflowCollection",
-      "name": "Sample - HTTP - 1.0.0",
+      "name": "Sample - Generic HTTP - 1.0.0",
       "description": "HTTP sample playbooks demonstrate get, post, put, head, delete, patch, option requests",
       "visible": true,
       "image": "/api/3/images/5b47a8030d9fd7065b6ba8d1",
@@ -45,7 +45,7 @@
               "name": "HTTP DELETE request",
               "description": null,
               "arguments": {
-                "name": "HTTP",
+                "name": "Generic HTTP",
                 "config": "f5322f77-5d4e-4da9-a60f-f73fad83ab3f",
                 "params": {
                   "data": "",
@@ -117,7 +117,7 @@
               "name": "HTTP HEAD request",
               "description": null,
               "arguments": {
-                "name": "HTTP",
+                "name": "Generic HTTP",
                 "config": "f5322f77-5d4e-4da9-a60f-f73fad83ab3f",
                 "params": {
                   "data": "",
@@ -189,7 +189,7 @@
               "name": "HTTP OPTIONS Request",
               "description": null,
               "arguments": {
-                "name": "HTTP",
+                "name": "Generic HTTP",
                 "config": "f5322f77-5d4e-4da9-a60f-f73fad83ab3f",
                 "params": {
                   "data": "",
@@ -263,7 +263,7 @@
               "name": "HTTP PATCH request",
               "description": null,
               "arguments": {
-                "name": "HTTP",
+                "name": "Generic HTTP",
                 "config": "f5322f77-5d4e-4da9-a60f-f73fad83ab3f",
                 "params": {
                   "data": "",
@@ -316,7 +316,7 @@
               "name": "HTTP PUT Request",
               "description": null,
               "arguments": {
-                "name": "HTTP",
+                "name": "Generic HTTP",
                 "config": "f5322f77-5d4e-4da9-a60f-f73fad83ab3f",
                 "params": {
                   "data": "",
@@ -407,7 +407,7 @@
               "name": "HTTP GET Request",
               "description": null,
               "arguments": {
-                "name": "HTTP",
+                "name": "Generic HTTP",
                 "config": "f5322f77-5d4e-4da9-a60f-f73fad83ab3f",
                 "params": {
                   "header": "{\n  \"Content-Type\": \"text/html\"\n}",
@@ -461,7 +461,7 @@
               "name": "HTTP POST Request",
               "description": null,
               "arguments": {
-                "name": "HTTP",
+                "name": "Generic HTTP",
                 "config": "f5322f77-5d4e-4da9-a60f-f73fad83ab3f",
                 "params": {
                   "data": "",

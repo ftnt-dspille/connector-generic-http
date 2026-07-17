@@ -1,4 +1,4 @@
-# HTTP Connector
+# Generic HTTP Connector
 
 Generic HTTP client for FortiSOAR. One connector, any REST API: arbitrary methods, configurable auth, retry, pagination, file upload, and scheduled ingestion.
 
@@ -27,7 +27,7 @@ Vendor docs show Python (or curl) examples. Here's how to read them and map to t
 
 ---
 
-**Static API key in a header**
+### Static API key in a header
 
 ```python
 # What the vendor shows you
@@ -44,7 +44,7 @@ Why a dedicated auth type and not Default Custom Headers? Because `api_key` is s
 
 ---
 
-**Static API key as a query parameter**
+### Static API key as a query parameter
 
 ```python
 # What the vendor shows you
@@ -59,7 +59,7 @@ api_key:            abc123
 
 ---
 
-**Bearer token (static, long-lived)**
+### Bearer token (static, long-lived)
 
 ```python
 # What the vendor shows you
@@ -75,7 +75,7 @@ No login step needed — paste the token directly.
 
 ---
 
-**OAuth2 client credentials (machine-to-machine)**
+### OAuth2 client credentials (machine-to-machine)
 
 ```python
 # What the vendor shows you
@@ -102,7 +102,7 @@ The connector handles the token fetch and caches it until expiry — you don't w
 
 ---
 
-**Username/password login → JWT on subsequent calls**
+### Username/password login → JWT on subsequent calls
 
 ```python
 # What the vendor shows you
@@ -129,7 +129,7 @@ If the vendor example uses `{"email": "…", "passwd": "…"}` instead, change `
 
 ---
 
-**API key sent on login request as a header → short-lived JWT returned**
+### API key sent on login request as a header → short-lived JWT returned
 
 ```python
 # What the vendor shows you (e.g. Yeti)
@@ -155,7 +155,7 @@ login_header_prefix:    Bearer
 
 ---
 
-**Plain string token in login response body (filebrowser)**
+### Plain string token in login response body (filebrowser)
 
 ```python
 # What the vendor shows you

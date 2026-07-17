@@ -1,4 +1,4 @@
-# HTTP Connector
+# Generic HTTP Connector
 
 The full connector documentation is the README that ships inside the connector package:
 

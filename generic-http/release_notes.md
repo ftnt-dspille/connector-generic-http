@@ -1,3 +1,14 @@
+#### 3.0.1
+
+##### What's Changed
+
+- **Display label is now "Generic HTTP"** (was "HTTP"). The bare "HTTP" label read as though it owned the protocol namespace in the connector store and the playbook step picker — the same confusion the 3.0.0 `name` rename set out to fix. The sample playbook step labels and collection name follow the new label.
+- Docs: the auth-pattern walkthroughs ("Static API key in a header", "OAuth2 client credentials (machine-to-machine)", etc.) are real headings now instead of bold text, so they get anchor links and appear in the README outline.
+
+No functional change — `name` (`generic-http`), operations, parameters, and connection fields are unchanged from 3.0.0.
+
+---
+
 #### 3.0.0
 
 ##### Breaking changes

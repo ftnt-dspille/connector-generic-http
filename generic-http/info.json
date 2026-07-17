@@ -1,11 +1,11 @@
 {
   "name": "generic-http",
-  "label": "HTTP",
+  "label": "Generic HTTP",
   "description": "Versatile generic HTTP connector. Supports any REST API: configurable auth (None / Basic / Bearer / API Key Header / API Key Query Param / OAuth2 Client Credentials with token caching), per-call auth override, connection-level custom headers, query params, body shaping (json / form / multipart / raw), retry with backoff, follow-redirects toggle, response path plucking, RFC 5988 / next-URL / page-param pagination, and scheduled data ingestion.",
   "publisher": "Fortinet",
   "cs_approved": true,
   "cs_compatible": true,
-  "version": "3.0.0",
+  "version": "3.0.1",
   "category": "HTTP Requests",
   "help_online": "",
   "icon_small_name": "HTTP_Connector_small.png",
