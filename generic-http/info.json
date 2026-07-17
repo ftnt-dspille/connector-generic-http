@@ -5,7 +5,7 @@
   "publisher": "Fortinet",
   "cs_approved": true,
   "cs_compatible": true,
-  "version": "3.0.1",
+  "version": "3.0.2",
   "category": "HTTP Requests",
   "help_online": "",
   "icon_small_name": "HTTP_Connector_small.png",
@@ -311,7 +311,7 @@
               "required": false,
               "editable": true,
               "visible": true,
-              "tooltip": "json: send username/password as a JSON body. header_only: send no body — credentials go in Login Request Headers only (e.g. Yeti x-yeti-apikey).",
+              "tooltip": "json: send username/password as a JSON body. header_only: send no body, so credentials go in Login Request Headers only (e.g. Yeti x-yeti-apikey).",
               "isOnChange": true,
               "onChangeParam": "Authentication Type",
               "onChangeOption": "Token Login"
@@ -430,7 +430,7 @@
         "editable": true,
         "visible": true,
         "value": {},
-        "tooltip": "Non-sensitive headers attached to every request (e.g. {\"User-Agent\":\"FortiSOAR\"}). DO NOT put secrets here — values are stored in plaintext. For secret headers use 'API Key Header' auth.",
+        "tooltip": "Non-sensitive headers attached to every request (e.g. {\"User-Agent\":\"FortiSOAR\"}). DO NOT put secrets here; values are stored in plaintext. For secret headers use 'API Key Header' auth.",
         "description": "Non-sensitive headers attached to every request. Values are stored in plaintext.",
         "isOnChange": false
       },
@@ -1440,7 +1440,7 @@
           "editable": true,
           "visible": true,
           "placeholder": "/api/3/files/<uuid>",
-          "tooltip": "FortiSOAR File IRI (e.g. /api/3/files/<uuid>). Alternative to Attachment @id — use when you already have a direct file reference."
+          "tooltip": "FortiSOAR File IRI (e.g. /api/3/files/<uuid>). Alternative to Attachment @id. Use when you already have a direct file reference."
         },
         {
           "title": "Local File Path (advanced)",
@@ -1576,7 +1576,7 @@
       "title": "Download File",
       "annotation": "download_file",
       "category": "investigation",
-      "description": "Download a remote URL and save the response body as a FortiSOAR attachment (or to disk on the integration agent). Streams bytes — large files never go through the playbook engine. The reverse of Upload File.",
+      "description": "Download a remote URL and save the response body as a FortiSOAR attachment (or to disk on the integration agent). Streams bytes, so large files never go through the playbook engine. The reverse of Upload File.",
       "enabled": true,
       "parameters": [
         {

@@ -17,6 +17,6 @@ pytest -v
 
 The mock test suite (`tests/test_http.py`) runs offline against `requests-mock`. Live
 tests against a real FortiSOAR appliance (`tests/test_http_live_soar.py`) are opt-in and
-read-only — enable with `RUN_SOAR_LIVE_TESTS=1` and a `.env` (or env vars) providing
+read-only. Enable them with `RUN_SOAR_LIVE_TESTS=1` and a `.env` (or env vars) providing
 `BASE_URL` + `API_KEY`.
 
