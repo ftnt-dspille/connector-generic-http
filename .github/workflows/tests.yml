@@ -26,7 +26,17 @@ jobs:
       - name: Lint (ruff)
         run: ruff check
       - name: Type-check (mypy)
-        run: mypy http
+        # The connector package dir must be named for the connector
+        # (`generic-http`) because FortiSOAR keys the bundle's top-level dir to
+        # the name in info.json. A hyphen is not a valid Python identifier, so
+        # mypy refuses any dir holding an __init__.py it can't name as a package.
+        # The appliance loads the connector dynamically and never imports it by
+        # that dotted name, so this only bites mypy. Point it at an
+        # underscore-named symlink: same files, package name it will accept.
+        run: |
+          ln -sfn generic-http generic_http
+          mypy generic_http
+          rm generic_http
       - name: Test (pytest)
         # Live SOAR tests are skipped without RUN_SOAR_LIVE_TESTS + creds.
         run: pytest -v

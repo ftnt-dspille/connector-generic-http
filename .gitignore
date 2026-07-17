@@ -10,3 +10,6 @@ __pycache__/
 *.egg-info/
 
 .DS_Store
+
+# CI-only shim: underscore symlink so mypy can name the hyphenated package.
+/generic_http
