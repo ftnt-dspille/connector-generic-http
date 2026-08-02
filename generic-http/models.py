@@ -1,4 +1,4 @@
-# Copyright (C) 2026 Fortinet Inc. — MIT License
+# Copyright (C) 2026 Fortinet Inc. -- MIT License
 """Pydantic models for the HTTP connector's operation params and parsed
 responses, plus the small coercion helpers the config/param validators share.
 
@@ -96,6 +96,23 @@ def _strip_or_none(v: Any) -> Optional[str]:
 def _coerce_int(default: int) -> Callable[[Any], int]:
     def _coerce(v: Any) -> int:
         if v in (None, "", 0):
+            return default
+        return int(v)
+
+    return _coerce
+
+
+def _coerce_int_allow_zero(default: int) -> Callable[[Any], int]:
+    """Like ``_coerce_int`` but treats 0 as a real value, not as "unset".
+
+    Needed for ``start_page``: plenty of APIs are 0-indexed (Fleet, Elastic,
+    Jira's ``startAt``), and folding 0 into the default silently skips the
+    entire first page. That surfaces as a short result set rather than an
+    error, which on an inventory query means hosts quietly going missing.
+    """
+
+    def _coerce(v: Any) -> int:
+        if v is None or v == "":
             return default
         return int(v)
 
@@ -429,7 +446,7 @@ class PaginateParams(BaseModel):
     @field_validator("start_page", mode="before")
     @classmethod
     def _v_start_page(cls, v: Any) -> int:
-        return _coerce_int(1)(v)
+        return _coerce_int_allow_zero(1)(v)
 
     @field_validator("max_pages", mode="before")
     @classmethod
@@ -535,7 +552,7 @@ class FetchRecordsParams(BaseModel):
     @field_validator("start_page", mode="before")
     @classmethod
     def _v_start_page(cls, v: Any) -> int:
-        return _coerce_int(1)(v)
+        return _coerce_int_allow_zero(1)(v)
 
     @field_validator("max_pages", mode="before")
     @classmethod

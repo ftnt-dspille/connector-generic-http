@@ -36,13 +36,13 @@ def soar_stubs(monkeypatch):
     """
     calls = {'download': [], 'upload': [], 'crudhub': []}
 
-    # connectors.cyops_utilities.builtins — already stubbed for the package,
+    # connectors.cyops_utilities.builtins -- already stubbed for the package,
     # but we extend it with the symbols the new ops touch.
     builtins_mod = sys.modules['connectors.cyops_utilities.builtins']
 
     def _download(iri, *a, **k):
         calls['download'].append({'iri': iri, 'args': a, 'kwargs': k})
-        # Return basename only — operations.py joins it against TMP_FILE_ROOT.
+        # Return basename only -- operations.py joins it against TMP_FILE_ROOT.
         return {'cyops_file_path': 'stub_payload.bin', 'filename': 'stub_payload.bin'}
 
     def _upload(file_path, filename, create_attachment=False, name=None, description=None):
@@ -58,7 +58,7 @@ def soar_stubs(monkeypatch):
     monkeypatch.setattr(builtins_mod, 'download_file_from_cyops', _download, raising=False)
     monkeypatch.setattr(builtins_mod, 'upload_file_to_cyops', _upload, raising=False)
 
-    # connectors.cyops_utilities.crudhub — not in default conftest.
+    # connectors.cyops_utilities.crudhub -- not in default conftest.
     crudhub_mod = sys.modules.get('connectors.cyops_utilities.crudhub')
     if crudhub_mod is None:
         crudhub_mod = types.ModuleType('connectors.cyops_utilities.crudhub')
@@ -194,13 +194,13 @@ def test_oauth2_client_credentials_caches_token(ops, requests_mock):
 
 
 def test_per_call_auth_param_is_ignored(ops, requests_mock):
-    """v2.0.3 removed per-call auth override — connection-level auth always wins."""
+    """v2.0.3 removed per-call auth override -- connection-level auth always wins."""
     requests_mock.get('https://api.example.com/v1/x', json={}, status_code=200)
     cfg = _config(auth_type='Bearer Token', bearer_token='global')
     ops.http_get(cfg, {
         'rest_api': '/v1/x',
         'auth_type': 'Bearer Token',
-        'bearer_token': 'override',  # noise — should be ignored
+        'bearer_token': 'override',  # noise -- should be ignored
     })
     assert requests_mock.last_request.headers['Authorization'] == 'Bearer global'
 
@@ -429,6 +429,33 @@ def test_paginate_page_param_terminates_on_empty(ops, requests_mock):
     assert result['pages_fetched'] == 2
 
 
+def test_paginate_start_page_zero_is_honoured(ops, requests_mock):
+    # Regression: start_page=0 was coerced to the default of 1, so 0-indexed
+    # APIs (Fleet, Elastic, Jira startAt) silently skipped their entire first
+    # page. That surfaced as a short result set, not an error.
+    requests_mock.get('https://api.example.com/v1/items', [
+        {'json': {'data': [{'id': 1}]}, 'status_code': 200, 'headers': {'Content-Type': 'application/json'}},
+        {'json': {'data': []}, 'status_code': 200, 'headers': {'Content-Type': 'application/json'}},
+    ])
+    result = ops.http_paginate(_config(), {
+        'rest_api': '/v1/items', 'pagination_mode': 'page_param',
+        'items_path': 'data', 'page_param_name': 'page', 'start_page': 0,
+    })
+    assert requests_mock.request_history[0].qs['page'] == ['0']
+    assert [i['id'] for i in result['items']] == [1]
+
+
+def test_paginate_start_page_defaults_to_one_when_unset(ops, requests_mock):
+    requests_mock.get('https://api.example.com/v1/items', [
+        {'json': {'data': []}, 'status_code': 200, 'headers': {'Content-Type': 'application/json'}},
+    ])
+    ops.http_paginate(_config(), {
+        'rest_api': '/v1/items', 'pagination_mode': 'page_param',
+        'items_path': 'data', 'page_param_name': 'page',
+    })
+    assert requests_mock.request_history[0].qs['page'] == ['1']
+
+
 def test_paginate_max_pages_caps_walk(ops, requests_mock):
     # Always returns a "next" link → walk would loop forever without the max_pages cap.
     requests_mock.get('https://api.example.com/v1/items',
@@ -538,7 +565,7 @@ def test_resolve_attachment_local_path_passthrough(ops, tmp_path):
 
 
 def test_resolve_attachment_dict_pulls_at_id(ops, soar_stubs):
-    # A File IRI in a dict — no /attachments/ dereference needed.
+    # A File IRI in a dict -- no /attachments/ dereference needed.
     (open(os.path.join(soar_stubs['tmp_root'], 'stub_payload.bin'), 'wb')).write(b'1')
     path, _ = ops._resolve_attachment_to_path({'@id': '/api/3/files/abc'})
     assert path.endswith('stub_payload.bin')
@@ -597,7 +624,7 @@ def test_upload_file_multipart(ops, requests_mock, soar_stubs):
     assert result['uploaded']['bytes'] == len(b'csv,bytes,here')
     assert result['uploaded']['mode'] == 'multipart'
     body = requests_mock.last_request.body
-    # Body is the raw multipart payload — must include the file bytes and filename.
+    # Body is the raw multipart payload -- must include the file bytes and filename.
     assert b'csv,bytes,here' in body
     assert b'stub_payload.bin' in body or b'filename=' in body
 
@@ -782,7 +809,7 @@ def test_check_health_connection_error_raises(ops, requests_mock):
 
 
 # ===========================================================================
-# Live tests — opt-in via RUN_LIVE_TESTS=1.
+# Live tests -- opt-in via RUN_LIVE_TESTS=1.
 #
 # These hit real public endpoints (httpbin.org) to verify the connector
 # against an actual HTTP stack. SOAR-internal helpers (upload_file_to_cyops,
