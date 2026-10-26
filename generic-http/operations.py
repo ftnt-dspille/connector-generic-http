@@ -987,12 +987,14 @@ def download_file(config: HttpConfig | dict[str, Any], params: dict[str, Any]) -
     # is set the decoded byte count no longer matches the wire Content-Length;
     # only compare them for identity-encoded responses.
     content_length = response.headers.get("Content-Length")
-    length_comparable = (
-        content_length
-        and str(content_length).isdigit()
-        and response.headers.get("Content-Encoding", "identity") in ("identity", "")
-    )
-    expected_size = int(content_length) if length_comparable else None
+    content_encoding = response.headers.get("Content-Encoding", "identity")
+    expected_size = None
+    if (
+        content_length is not None
+        and content_length.isdigit()
+        and content_encoding in ("identity", "")
+    ):
+        expected_size = int(content_length)
 
     fd, staging_path = tempfile.mkstemp(prefix=".http_dl_", dir=tmp_root)
     os.close(fd)
