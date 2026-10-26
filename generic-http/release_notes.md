@@ -1,3 +1,11 @@
+#### 3.1.1
+
+##### What's Changed
+
+- Typing-only fix for CI: restructure the `Content-Length` comparison in `download_file` so mypy can verify the non-None narrowing locally instead of through a boolean. No behavior change; parameters, outputs, and connection fields are identical to 3.1.0.
+
+---
+
 #### 3.1.0
 
 ##### What's Changed
