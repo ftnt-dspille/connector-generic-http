@@ -8,7 +8,11 @@ Enable with:
     RUN_SOAR_LIVE_TESTS=1 pytest tests/test_http_live_soar.py -v
 
 Credentials are read from a .env file at the repo root (BASE_URL + API_KEY),
-or the BASE_URL / API_KEY environment variables.
+or the BASE_URL / API_KEY environment variables. API_KEY is sent verbatim in
+the Authorization header, so any scheme works: "API-KEY <key>" for a real API
+key, or "Bearer <jwt>" for a freshly minted session token (pyfsr
+user_pass-style login) when you cannot mint a persistent key. Set
+VERIFY_SSL=false for IP-address appliances whose cert cannot match.
 
 These tests are READ-ONLY — they do not POST, PUT, PATCH, or DELETE anything.
 """
@@ -47,6 +51,8 @@ def _read_env_file(path: Path) -> dict:
 _env = _read_env_file(ENV_FILE)
 BASE_URL = os.environ.get('BASE_URL') or _env.get('BASE_URL', '').rstrip('/')
 API_KEY = os.environ.get('API_KEY') or _env.get('API_KEY', '')
+VERIFY_SSL = (os.environ.get('VERIFY_SSL') or _env.get('VERIFY_SSL', 'true')).strip().lower() \
+    not in ('0', 'false', 'no')
 
 pytestmark = pytest.mark.skipif(
     not (SOAR_LIVE and BASE_URL and API_KEY),
@@ -77,14 +83,14 @@ def soar_tmp_dir(monkeypatch):
 
 
 def _soar_config(**overrides):
-    """FortiSOAR uses 'Authorization: API-KEY <key>' — modeled as API Key Header
-    auth with header name 'Authorization' and value 'API-KEY <key>'."""
+    """Authorization carries API_KEY verbatim, so both real API keys
+    ("API-KEY <key>") and session JWTs ("Bearer <jwt>") work."""
     cfg = {
         'server_url': BASE_URL,
         'auth_type': 'API Key Header',
         'api_key_header_name': 'Authorization',
-        'api_key': f'API-KEY {API_KEY}',
-        'verify_ssl': True,
+        'api_key': API_KEY,
+        'verify_ssl': VERIFY_SSL,
         'timeout': 60,
         'return_on_error': True,
         'default_headers': {'Accept': 'application/json'},
@@ -213,8 +219,11 @@ def test_soar_fetch_records_shape(ops):
 
 def test_soar_download_real_file(ops, soar_tmp_dir):
     """Find a small attachment, hit its file's download endpoint, save to disk.
-    create_attachment=False because we're off-appliance — but the GET path,
-    Content-Disposition handling, and on-disk write all exercise real bytes."""
+    create_attachment=False because we're off-appliance -- but the GET path,
+    Content-Disposition handling, and on-disk write all exercise real bytes.
+
+    Also proves the staging discipline: exactly ONE file lands in TMP_FILE_ROOT
+    (the published name), with no .http_dl_* staging litter left behind."""
     listing = ops.http_get(
         _soar_config(),
         {'rest_api': '/api/3/attachments', 'parameter': {'$limit': '10'}},
@@ -231,16 +240,45 @@ def test_soar_download_real_file(ops, soar_tmp_dir):
     target = candidates[0]
     file_iri = target['file']['@id']
 
-    # FSR file-download endpoint = <file IRI>/download. The connector follows
-    # the redirect (or streams the body directly, depending on appliance version).
+    # FSR 8.0.x serves file bytes at the file IRI itself, but ONLY when the
+    # request asks for octet-stream (JSON metadata otherwise). Per-call headers
+    # win over the config's default Accept header.
     result = ops.download_file(_soar_config(), {
-        'rest_api': f'{file_iri}/download',
+        'rest_api': file_iri,
+        'header': {'Accept': 'application/octet-stream'},
         'create_attachment': False,
     })
     assert result['status_code'] == 200
     assert result['downloaded']['bytes'] == target['file']['size'] or \
            result['downloaded']['bytes'] > 0  # some FSR versions stream re-encoded
     assert os.path.exists(result['downloaded']['file_path'])
+
+    # Identity-encoded responses must match their declared Content-Length exactly.
+    hdrs = {k.lower(): v for k, v in result['headers'].items()}
+    cl = hdrs.get('content-length')
+    if cl and str(cl).isdigit() and not hdrs.get('content-encoding'):
+        assert result['downloaded']['bytes'] == int(cl), \
+            'truncated/expanded body vs Content-Length'
+
+    # No staging litter: the tmp root holds exactly the published file.
+    files = sorted(os.listdir(soar_tmp_dir))
+    assert files == [result['downloaded']['filename']], \
+        f'staging litter left behind: {files}'
+
+
+def test_soar_download_missing_file_leaves_nothing(ops, soar_tmp_dir):
+    """A failed download (404 file IRI, return_on_error=false) must raise and
+    leave TMP_FILE_ROOT completely empty -- no partial staging files."""
+    from connectors.core.connector import ConnectorError
+
+    bogus = '/api/3/files/00000000-0000-0000-0000-000000000000'
+    with pytest.raises(ConnectorError):
+        ops.download_file(_soar_config(return_on_error=False), {
+            'rest_api': bogus,
+            'header': {'Accept': 'application/octet-stream'},
+            'create_attachment': False,
+        })
+    assert os.listdir(soar_tmp_dir) == []
 
 
 # ---------------------------------------------------------------------------
@@ -252,7 +290,7 @@ def test_soar_unauthenticated_returns_401(ops):
     cfg = {
         'server_url': BASE_URL,
         'auth_type': 'None',
-        'verify_ssl': True,
+        'verify_ssl': VERIFY_SSL,
         'timeout': 30,
         'return_on_error': True,
     }

@@ -362,11 +362,21 @@ class DownloadFileParams(BaseModel):
     data: Any = None  # arbitrary JSON body
     timeout: Optional[int] = None
     follow_redirects: bool = True
+    max_size_mb: int = 0
 
     @field_validator("rest_api", "filename", "attachment_name", "description", mode="before")
     @classmethod
     def _v_strip(cls, v: Any) -> str:
         return _strip(v)
+
+    @field_validator("max_size_mb", mode="before")
+    @classmethod
+    def _v_max_size_mb(cls, v: Any) -> int:
+        """0 / unset / junk = no cap; negatives clamp to 0."""
+        try:
+            return max(int(v or 0), 0)
+        except (TypeError, ValueError):
+            return 0
 
     @field_validator("method", mode="before")
     @classmethod

@@ -1,3 +1,17 @@
+#### 3.1.0
+
+##### What's Changed
+
+- **Download File no longer leaves a copy of the file in TMP_FILE_ROOT** (which is `/tmp/` on a stock appliance). The staged bytes existed only to feed `upload_file_to_cyops`, which ingests from disk; after the attachment was created the copy stayed forever. The staging file is now removed on every path: after a successful upload, after a failed upload, when the helper module itself fails to load, on a mid-stream connection drop, and on a truncated response. When *Create FortiSOAR Attachment* is off, the published file is still left on disk under its resolved name by design (the step returns its path).
+- **Concurrent downloads can no longer corrupt each other.** Bytes stream into a uniquely-named staging file and the upload reads that file directly, so two playbooks downloading the same attachment name at the same time no longer race on `<TMP_FILE_ROOT>/<filename>`. Publishing to the final name (attachment off) is an atomic rename.
+- **Truncated downloads are detected.** For identity-encoded responses the received byte count is compared against `Content-Length`, and a mismatch fails the step instead of ingesting a partial file. Responses with `Content-Encoding` (gzip and friends) are exempt, because the decoded byte count legitimately differs from the wire length.
+- **New optional parameter: Max Size (MB)** (`max_size_mb`, default 0 = unlimited). When set, a download larger than the cap is aborted mid-stream, the staged bytes are removed, and the step fails with a clear error. Disk-fill protection for untrusted URLs.
+- Filename resolution hardened: a `.` or `..` filename (or null bytes in one) falls back to `download.bin` instead of attempting to write the directory itself.
+
+Playbook-visible changes: `download_file` gains the `max_size_mb` parameter. The `downloaded` output shape is unchanged. No connection-field changes.
+
+---
+
 #### 3.0.2
 
 ##### What's Changed

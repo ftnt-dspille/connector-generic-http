@@ -5,7 +5,7 @@
   "publisher": "Fortinet",
   "cs_approved": true,
   "cs_compatible": true,
-  "version": "3.0.2",
+  "version": "3.1.0",
   "category": "HTTP Requests",
   "help_online": "",
   "icon_small_name": "HTTP_Connector_small.png",
@@ -1639,6 +1639,16 @@
           "editable": true,
           "visible": true,
           "tooltip": "Force a specific filename. Otherwise the connector uses Content-Disposition, then the URL basename, then 'download.bin'."
+        },
+        {
+          "title": "Max Size (MB)",
+          "name": "max_size_mb",
+          "type": "integer",
+          "required": false,
+          "editable": true,
+          "visible": true,
+          "value": 0,
+          "tooltip": "Safety cap: abort the download and clean up the staged file if the response body exceeds this many megabytes. 0 (default) means unlimited."
         },
         {
           "title": "Query Parameters",

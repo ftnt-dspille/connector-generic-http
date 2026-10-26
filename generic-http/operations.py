@@ -16,6 +16,7 @@ from __future__ import annotations
 import json as _json
 import os
 import re
+import tempfile
 import time
 from base64 import b64encode
 from typing import Any
@@ -859,6 +860,16 @@ def fetch_records(config: HttpConfig | dict[str, Any], params: dict[str, Any]) -
 # ---------------------------------------------------------------------------
 
 
+def _silent_unlink(path: str | None) -> None:
+    """Best-effort removal of a staging file; never masks the real error."""
+    if not path:
+        return
+    try:
+        os.remove(path)
+    except OSError:
+        pass
+
+
 def _filename_from_content_disposition(value: str | None) -> str | None:
     """Extract filename from a Content-Disposition header, or None."""
     if not value:
@@ -913,7 +924,10 @@ def download_file(config: HttpConfig | dict[str, Any], params: dict[str, Any]) -
     session = _build_session(cfg)
 
     # Pick a destination. We need a file on disk before we can hand it to
-    # FortiSOAR's upload helper.
+    # FortiSOAR's upload helper. Stage into a UNIQUELY-named temp file inside
+    # tmp_root: concurrent playbooks downloading the same attachment can never
+    # corrupt each other, and the staging file is removed on every path
+    # (uploaded, published, failed) so TMP_FILE_ROOT never accumulates litter.
     try:
         from django.conf import settings
 
@@ -961,20 +975,60 @@ def download_file(config: HttpConfig | dict[str, Any], params: dict[str, Any]) -
         or os.path.basename(urlparse(response.url).path)
         or "download.bin"
     )
-    # Strip any path separators that snuck in.
-    resolved_name = os.path.basename(resolved_name) or "download.bin"
+    # Strip path separators (and null bytes) so the write can never escape
+    # tmp_root; '.' and '..' name the directory itself, not a file.
+    resolved_name = os.path.basename(resolved_name.replace("\x00", "")).strip() or "download.bin"
+    if resolved_name in (".", ".."):
+        resolved_name = "download.bin"
     dest_path = os.path.join(tmp_root, resolved_name)
 
+    max_bytes = p.max_size_mb * 1024 * 1024 if p.max_size_mb else None
+    # requests transparently decodes gzip/deflate bodies, so once Content-Encoding
+    # is set the decoded byte count no longer matches the wire Content-Length;
+    # only compare them for identity-encoded responses.
+    content_length = response.headers.get("Content-Length")
+    length_comparable = (
+        content_length
+        and str(content_length).isdigit()
+        and response.headers.get("Content-Encoding", "identity") in ("identity", "")
+    )
+    expected_size = int(content_length) if length_comparable else None
+
+    fd, staging_path = tempfile.mkstemp(prefix=".http_dl_", dir=tmp_root)
+    os.close(fd)
     bytes_written = 0
     try:
-        with open(dest_path, "wb") as fh:
-            for chunk in response.iter_content(chunk_size=64 * 1024):
-                if not chunk:
-                    continue
-                fh.write(chunk)
-                bytes_written += len(chunk)
-    finally:
-        response.close()
+        try:
+            with open(staging_path, "wb") as fh:
+                for chunk in response.iter_content(chunk_size=64 * 1024):
+                    if not chunk:
+                        continue
+                    fh.write(chunk)
+                    bytes_written += len(chunk)
+                    if max_bytes is not None and bytes_written > max_bytes:
+                        raise ConnectorError(
+                            f"Download exceeded max_size_mb={p.max_size_mb} "
+                            f"after {bytes_written} bytes; aborted and cleaned up."
+                        )
+        finally:
+            response.close()
+    except requests.exceptions.RequestException as err:
+        _silent_unlink(staging_path)
+        raise ConnectorError(
+            f"Download interrupted after {bytes_written} bytes: {err}"
+        ) from err
+    except Exception as err:  # ConnectorError above, or OSError (disk full) mid-stream
+        _silent_unlink(staging_path)
+        if isinstance(err, ConnectorError):
+            raise
+        raise ConnectorError(f"Download failed after {bytes_written} bytes: {err}") from err
+
+    if expected_size is not None and bytes_written != expected_size:
+        _silent_unlink(staging_path)
+        raise ConnectorError(
+            f"Truncated download: server declared {expected_size} bytes, "
+            f"received {bytes_written}."
+        )
 
     out: dict[str, Any] = {
         "status_code": response.status_code,
@@ -986,19 +1040,46 @@ def download_file(config: HttpConfig | dict[str, Any], params: dict[str, Any]) -
         try:
             from connectors.cyops_utilities.builtins import upload_file_to_cyops
         except ImportError as err:
+            # No runtime helpers on this host: publish the bytes under their
+            # real name so the caller can still reach them, then surface it.
+            os.replace(staging_path, dest_path)
             raise ConnectorError(
                 "FortiSOAR runtime helpers unavailable; cannot create attachment. "
-                f"Set 'create_attachment' to false to keep the file at {dest_path}."
+                "Set 'create_attachment' to false to keep using the file at "
+                f"{dest_path}."
             ) from err
-        attach = upload_file_to_cyops(
-            file_path=resolved_name,
-            filename=resolved_name,
-            create_attachment=True,
-            name=display_name or resolved_name,
-            description=description or f"Downloaded via HTTP connector from {url}",
-        )
+        except Exception:
+            # The helper module was found but blew up while loading (e.g. a
+            # half-initialized runtime raising AppRegistryNotReady). That is
+            # not "no runtime", so do not publish -- just remove the staged
+            # bytes and let the original error surface.
+            _silent_unlink(staging_path)
+            raise
+        try:
+            # Upload straight from the uniquely-named staging file. FSR's
+            # helper joins TMP_FILE_ROOT with the path it is given; an
+            # absolute path under that root passes its traversal check
+            # unchanged, and because the name is unique per call no
+            # concurrent run can swap the bytes between our write and the
+            # upload.
+            attach = upload_file_to_cyops(
+                file_path=staging_path,
+                filename=resolved_name,
+                create_attachment=True,
+                name=display_name or resolved_name,
+                description=description or f"Downloaded via HTTP connector from {url}",
+            )
+        finally:
+            # The staging file has served its purpose -- remove it whether
+            # the upload succeeded or failed, so nothing is left behind.
+            _silent_unlink(staging_path)
         downloaded["attachment"] = attach
     else:
+        try:
+            os.replace(staging_path, dest_path)  # atomic publish to the real name
+        except OSError as err:
+            _silent_unlink(staging_path)
+            raise ConnectorError(f"Could not write {dest_path}: {err}") from err
         downloaded["file_path"] = dest_path
 
     out["downloaded"] = downloaded

@@ -49,6 +49,8 @@ def soar_stubs(monkeypatch):
         calls['upload'].append({
             'file_path': file_path, 'filename': filename,
             'create_attachment': create_attachment, 'name': name, 'description': description,
+            # Snapshot: did the staged file actually exist when the helper ran?
+            'existed': bool(file_path) and os.path.exists(file_path),
         })
         return {
             '@id': '/api/3/attachments/stub-uuid', 'name': name or filename,
@@ -688,15 +690,15 @@ def test_download_file_creates_attachment(ops, requests_mock, soar_stubs):
     assert result['downloaded']['bytes'] == len(b'csv,a,b\n1,2,3')
     assert result['downloaded']['attachment']['@id'] == '/api/3/attachments/stub-uuid'
 
-    # File actually landed on disk.
-    written = os.path.join(soar_stubs['tmp_root'], 'report.csv')
-    assert os.path.exists(written)
-    with open(written, 'rb') as fh:
-        assert fh.read() == b'csv,a,b\n1,2,3'
-
-    # upload_file_to_cyops was called with the resolved name + description.
+    # The staging file the helper was handed existed at call time...
     assert soar_stubs['upload'][0]['filename'] == 'report.csv'
     assert soar_stubs['upload'][0]['description'] == 'unit test'
+    uploaded_path = soar_stubs['upload'][0]['file_path']
+    assert os.path.dirname(uploaded_path) == soar_stubs['tmp_root']
+
+    # ...and after the upload NOTHING is left in TMP_FILE_ROOT: the staging
+    # file is consumed by the attachment ingest, not left behind.
+    assert os.listdir(soar_stubs['tmp_root']) == []
 
 
 def test_download_file_skip_attachment_returns_file_path(ops, requests_mock, soar_stubs):
@@ -761,6 +763,147 @@ def test_download_missing_url_raises(ops, soar_stubs):
     with pytest.raises(Exception) as exc:
         ops.download_file(_config(), {})
     assert 'url' in str(exc.value).lower() or 'rest_api' in str(exc.value).lower()
+
+
+# ---------- download_file edge cases ----------
+
+def test_download_file_upload_gets_existing_staging_file(ops, requests_mock, soar_stubs):
+    """The helper is handed a uniquely-named staging file that exists on disk
+    at call time -- it never races on <TMP_FILE_ROOT>/<resolved-name>."""
+    requests_mock.get('https://api.example.com/f.bin', content=b'12345', status_code=200)
+    ops.download_file(_config(), {'rest_api': '/f.bin', 'create_attachment': True})
+    call = soar_stubs['upload'][0]
+    assert call['existed'] is True
+    assert os.path.basename(call['file_path']).startswith('.http_dl_')
+
+
+def test_download_file_upload_failure_cleans_staging(ops, requests_mock, soar_stubs, monkeypatch):
+    """If the attachment ingest fails, the staged bytes are removed, not left
+    to rot in TMP_FILE_ROOT."""
+    requests_mock.get('https://api.example.com/f.bin', content=b'12345', status_code=200)
+    builtins_mod = sys.modules['connectors.cyops_utilities.builtins']
+
+    def _boom(*a, **k):
+        raise ConnectorError('crudhub exploded')
+
+    monkeypatch.setattr(builtins_mod, 'upload_file_to_cyops', _boom, raising=False)
+    with pytest.raises(Exception) as exc:
+        ops.download_file(_config(), {'rest_api': '/f.bin', 'create_attachment': True})
+    assert 'exploded' in str(exc.value)
+    assert os.listdir(soar_stubs['tmp_root']) == []
+
+
+def test_download_file_broken_import_cleans_staging(ops, requests_mock, soar_stubs, monkeypatch):
+    """A helper module that exists but fails DURING import (e.g. a
+    half-initialized runtime raising AppRegistryNotReady) must not leak the
+    staged file either -- and the original error surfaces, not a ConnectorError."""
+    requests_mock.get('https://api.example.com/f.bin', content=b'12345', status_code=200)
+
+    class _BoomFinder:
+        """Raises from find_spec itself, like a module whose import side
+        effects blow up (django's AppRegistryNotReady et al)."""
+
+        def find_spec(self, fullname, path=None, target=None):
+            if fullname == 'connectors.cyops_utilities.builtins':
+                raise RuntimeError('AppRegistryNotReady-like failure')
+            return None
+
+    monkeypatch.delitem(sys.modules, 'connectors.cyops_utilities.builtins', raising=False)
+    monkeypatch.setattr(sys, 'meta_path', [_BoomFinder(), *sys.meta_path])
+
+    with pytest.raises(RuntimeError):
+        ops.download_file(_config(), {'rest_api': '/f.bin', 'create_attachment': True})
+    assert os.listdir(soar_stubs['tmp_root']) == []
+
+
+def test_download_file_midstream_failure_cleans_staging(ops, requests_mock, soar_stubs):
+    """A connection drop mid-body leaves no partial file behind."""
+
+    class _OneChunkThenFail:
+        def __init__(self, data):
+            self._data = data
+            self._read = False
+
+        def read(self, amt=-1):
+            if self._read:
+                raise OSError('connection reset mid-body')
+            self._read = True
+            return self._data
+
+    requests_mock.get('https://api.example.com/big.bin',
+                      body=_OneChunkThenFail(b'partial-bytes'), status_code=200)
+
+    with pytest.raises(Exception) as exc:
+        ops.download_file(_config(), {'rest_api': '/big.bin', 'create_attachment': False})
+    assert 'after ' in str(exc.value)  # "...interrupted/failed after N bytes"
+    assert os.listdir(soar_stubs['tmp_root']) == []
+
+
+def test_download_file_truncated_body_raises_and_cleans(ops, requests_mock, soar_stubs):
+    """Server declared more bytes than it sent -> error, staging removed."""
+    requests_mock.get('https://api.example.com/cut.bin', content=b'short', status_code=200,
+                      headers={'Content-Length': '1000'})
+    with pytest.raises(Exception) as exc:
+        ops.download_file(_config(), {'rest_api': '/cut.bin', 'create_attachment': False})
+    assert 'truncated' in str(exc.value).lower()
+    assert os.listdir(soar_stubs['tmp_root']) == []
+
+
+def test_download_file_encoded_body_skips_length_check(ops, requests_mock, soar_stubs):
+    """Content-Encoding means requests decodes the body, so the decoded byte
+    count legitimately differs from the wire Content-Length -- do not flag it.
+    Serve real gzip bytes since requests runs the decompression itself."""
+    import gzip as _gzip
+
+    decoded = b'decoded-bytes'
+    wire = _gzip.compress(decoded)
+    requests_mock.get('https://api.example.com/gz.bin', content=wire, status_code=200,
+                      headers={'Content-Encoding': 'gzip',
+                               'Content-Length': str(len(wire))})
+    result = ops.download_file(_config(), {'rest_api': '/gz.bin', 'create_attachment': False})
+    assert result['downloaded']['bytes'] == len(decoded)
+    assert os.path.exists(result['downloaded']['file_path'])
+
+
+def test_download_file_dotdot_name_falls_back(ops, requests_mock, soar_stubs):
+    """A Content-Disposition of '..' (or '.') can't name the directory itself."""
+    requests_mock.get('https://api.example.com/x', content=b'1', status_code=200,
+                      headers={'Content-Disposition': 'attachment; filename=".."'})
+    result = ops.download_file(_config(), {'rest_api': '/x', 'create_attachment': False})
+    assert result['downloaded']['filename'] == 'download.bin'
+
+
+def test_download_file_max_size_mb_aborts_and_cleans(ops, requests_mock, soar_stubs):
+    requests_mock.get('https://api.example.com/huge.bin',
+                      content=b'x' * (2 * 1024 * 1024), status_code=200)
+    with pytest.raises(Exception) as exc:
+        ops.download_file(_config(), {'rest_api': '/huge.bin',
+                                      'create_attachment': False, 'max_size_mb': 1})
+    assert 'max_size_mb' in str(exc.value)
+    assert os.listdir(soar_stubs['tmp_root']) == []
+
+
+def test_download_file_replaces_existing_dest_atomically(ops, requests_mock, soar_stubs):
+    """create_attachment=False publishes under the real name, replacing any
+    previous copy, and leaves no staging litter behind."""
+    dest = os.path.join(soar_stubs['tmp_root'], 'report.csv')
+    with open(dest, 'wb') as fh:
+        fh.write(b'stale-previous-run')
+
+    requests_mock.get('https://api.example.com/files/report',
+                      content=b'fresh', status_code=200,
+                      headers={'Content-Disposition': 'attachment; filename="report.csv"'})
+    result = ops.download_file(_config(), {'rest_api': '/files/report', 'create_attachment': False})
+    with open(result['downloaded']['file_path'], 'rb') as fh:
+        assert fh.read() == b'fresh'
+    assert os.listdir(soar_stubs['tmp_root']) == ['report.csv']
+
+
+def test_download_file_max_size_mb_defaults_unlimited(ops):
+    """Junk / negative / missing max_size_mb means no cap, not a crash."""
+    assert ops._validate(ops.DownloadFileParams, {'max_size_mb': 'junk'}, 'x').max_size_mb == 0
+    assert ops._validate(ops.DownloadFileParams, {'max_size_mb': -5}, 'x').max_size_mb == 0
+    assert ops._validate(ops.DownloadFileParams, {}, 'x').max_size_mb == 0
 
 
 # ---------- retry ----------
